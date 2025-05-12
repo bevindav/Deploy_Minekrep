@@ -1,0 +1,397 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Minecraft font integration */
+@font-face {
+  font-family: 'Minecraft';
+  src: url('/fonts/Minecraft.woff2') format('woff2'),
+       url('/fonts/Minecraft.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Minecraft-style text with pixelated outline */
+.minecraft-text {
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  letter-spacing: 1px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2d3748;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
+
+/* React Flow customizations */
+.react-flow__node {
+  border-radius: 6px;
+  padding: 0;
+  cursor: default;
+}
+
+.react-flow__node-elementNode {
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  width: auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.react-flow__handle {
+  background: #9ae6b4;
+  border: 2px solid #2f855a;
+  width: 8px;
+  height: 8px;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__controls {
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 6px;
+  border: 1px solid #4a5568;
+}
+
+.react-flow__controls-button {
+  background: #2d3748;
+  border-bottom: 1px solid #4a5568;
+  color: #a0aec0;
+}
+
+.react-flow__controls-button:hover {
+  background: #4a5568;
+}
+
+/* Animation for loading and transitions */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Custom styles for buttons */
+.btn-minecraft {
+  position: relative;
+  background-color: #8bc34a;
+  border: 2px solid #558b2f;
+  color: white;
+  font-family: 'Minecraft', sans-serif;
+  padding: 8px 16px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  box-shadow: inset 0 -4px 0 #558b2f;
+  transition: all 0.1s;
+}
+
+.btn-minecraft:hover {
+  background-color: #9ccc65;
+}
+
+.btn-minecraft:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+/* Animasi untuk node yang di-highlight */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+  }
+}
+
+.node-highlight {
+  animation: pulse 1.5s infinite;
+}
+
+/* Animasi untuk edge */
+@keyframes dash {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.edge-animated {
+  stroke-dasharray: 5;
+  stroke-dashoffset: 20;
+  animation: dash 1s linear infinite;
+}
+
+/* Animasi fade-in untuk node baru */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.8);
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Animasi untuk progress bar */
+@keyframes progressAnimation {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.progress-bar-animation {
+  animation: progressAnimation 1s linear;
+}
+
+/* Peningkatan visibilitas edge */
+.react-flow__edge {
+  z-index: 5;
+}
+
+.react-flow__edge-path {
+  stroke-width: 3px;
+  stroke: #aaa;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 1s linear infinite;
+}
+
+.react-flow__edge.highlighted .react-flow__edge-path {
+  stroke: #FFD700 !important;
+  stroke-width: 4px;
+}
+
+.react-flow__edge-text {
+  font-size: 12px;
+}
+
+.react-flow__edge-textbg {
+  fill: #1f2937;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+}
+
+/* Pastikan marker terlihat */
+.react-flow__arrowhead {
+  fill: #aaa;
+}
+
+.react-flow__arrowhead.highlighted {
+  fill: #FFD700;
+}
+
+/* Saat hover pada edge, buat lebih tebal */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 5px;
+  stroke: #64ffda;
+}
+
+/* Styling untuk handle di node */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background-color: #64ffda;
+  border: 2px solid #1f2937;
+  visibility: visible !important;
+}
+
+.react-flow__handle-top {
+  top: -5px;
+}
+
+.react-flow__handle-bottom {
+  bottom: -5px;
+}
+
+/* Ukuran dan posisi icon pada node */
+.node-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+/* CSS untuk memperbaiki issue z-index */
+.react-flow__node {
+  z-index: 10;
+}
+
+.react-flow__node.highlighted {
+  z-index: 20;
+}
+
+/* Pastikan label node terbaca */
+.react-flow__node-default .react-flow__node-label {
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+  color: white;
+  font-weight: bold;
+}
+
+/* Styling khusus untuk container ReactFlow */
+.recipe-visualization-flow {
+  overflow: visible !important;
+}
+
+/* Memastikan edges selalu terlihat dengan z-index tinggi */
+.react-flow__edge {
+  z-index: 9999 !important;
+}
+
+.react-flow__edge-path {
+  stroke: #ffffff !important;
+  stroke-width: 4px !important;
+  filter: drop-shadow(0px 0px 3px rgba(0, 0, 0, 0.8));
+}
+
+.react-flow__edge-path:hover {
+  stroke: #64ffda !important;
+  stroke-width: 6px !important;
+}
+
+/* Memaksa marker panah terlihat */
+.react-flow__edge-marker {
+  opacity: 1 !important;
+}
+
+.react-flow__edge-text {
+  fill: white !important;
+  font-size: 12px !important;
+  filter: drop-shadow(0px 0px 2px rgba(0, 0, 0, 1));
+  font-weight: bold !important;
+}
+
+/* CSS khusus untuk membuat koneksi antar node terlihat lebih jelas */
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  opacity: 0 !important; /* Hide handles but keep functionality */
+}
+
+/* Style untuk animasi pada edge */
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5 !important;
+  animation: flowEdgeAnimation 1s infinite linear !important;
+}
+
+/* Special styling for highlighted edges */
+.react-flow__edge.highlighted .react-flow__edge-path {
+  stroke: #FFD700 !important;
+  stroke-width: 5px !important;
+  filter: drop-shadow(0px 0px 8px rgba(255, 215, 0, 0.8)) !important;
+}
+
+/* Edge animation keyframes */
+@keyframes flowEdgeAnimation {
+  0% {
+    stroke-dashoffset: 10;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* SVG line drawing animation untuk edges */
+.draw-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLineAnimation 1s forwards;
+}
+
+@keyframes drawLineAnimation {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Memastikan semua node terlihat dengan benar */
+.react-flow__node {
+  z-index: 10 !important;
+}
+
+/* 
+ * HACK PENTING: CSS hack untuk memaksa edge muncul dengan menambahkan 
+ * pseudo-element pada wrapper
+ */
+.react-flow-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: transparent;
+  z-index: -1;
+}
+
+/* Force hardware acceleration untuk memastikan edges render dengan benar */
+.react-flow__renderer {
+  transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+  perspective: 1000px !important;
+}
+
+/* Fix bug overflow yang mungkin menyembunyikan edges */
+.react-flow__pane {
+  overflow: visible !important;
+}
+
+/* Pastikan viewport tidak memotong edges */
+.react-flow__viewport {
+  overflow: visible !important;
+}
+
+/* Meningkatkan contrast edges agar terlihat lebih jelas */
+.react-flow__edge-path {
+  filter: contrast(150%) brightness(150%) !important;
+}
+
+/* Edge connector style */
+.react-flow__edge-path-selector {
+  stroke: transparent !important;
+  stroke-width: 10 !important;
+}
+
+/* Style khusus untuk container ReactFlow */
+.react-flow {
+  background-color: #1a202c !important;
+}
+
+/* Override untuk styling global z-index */
+.react-flow > * {
+  z-index: auto !important;
+}
