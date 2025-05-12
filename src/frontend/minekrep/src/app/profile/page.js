@@ -183,6 +183,8 @@ export default function ProfilePage() {
                 <ul className="text-gray-300 text-sm">
                   <li>GitHub</li>
                   <li>Docker</li>
+                  <li>Railway</li>
+                  <li>Vercel</li>
                 </ul>
               </div>
             </div>
