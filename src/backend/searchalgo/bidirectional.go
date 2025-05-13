@@ -206,7 +206,6 @@ func buildCompleteRecipe(
 			expand(ingredients[0])
 			expand(ingredients[1])
 		} else {
-			// Coba cari secara eksplisit dari resep jika masih belum ketemu
 			if recipes, ok := utilities.Recipes[elem]; ok {
 				for _, r := range recipes {
 					ingredients = []string{r.Element1, r.Element2}

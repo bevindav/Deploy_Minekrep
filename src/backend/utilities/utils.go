@@ -104,7 +104,6 @@ func CopyMap(original map[string][]string) map[string][]string {
 }
 
 func initializeTiers() {
-	// Set base tier 1
 	for _, element := range BaseElements {
 		Tiers[element] = 1
 	}
@@ -132,7 +131,6 @@ func initializeTiers() {
                             resultTier := Max(tier1, tier2) + 1
                             existingTier, exists := Tiers[result]
                             
-                            // Update tier kalau ada yagn lebih pendek
                             if !exists || resultTier < existingTier {
                                 Tiers[result] = resultTier
                                 if !processed[result] {
@@ -148,7 +146,6 @@ func initializeTiers() {
         }
     }
 }
-
 
 func LoadRecipes(filePath string) {
 	file, err := os.Open(filePath)
@@ -174,18 +171,18 @@ func LoadRecipes(filePath string) {
 	fmt.Printf("Loaded %d recipes.\n", len(loadedRecipes))
 }
 
-// LiveUpdateCallback is a function type for tracking search progress
+// tracking search progress
 var LiveUpdateCallback func(element string, path []string, found map[string][]string)
 var liveUpdateMutex sync.Mutex
 
-// SetLiveUpdateCallback sets the callback function for live updates
+// sets callback function for live updates
 func SetLiveUpdateCallback(callback func(element string, path []string, found map[string][]string)) {
     liveUpdateMutex.Lock()
     defer liveUpdateMutex.Unlock()
     LiveUpdateCallback = callback
 }
 
-// TrackLiveUpdate calls the callback function if it's set
+// calls the callback function for live updates
 func TrackLiveUpdate(element string, path []string, found map[string][]string) {
 	liveUpdateMutex.Lock()
 	defer liveUpdateMutex.Unlock()

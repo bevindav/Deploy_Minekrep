@@ -18,7 +18,7 @@ import 'reactflow/dist/style.css';
 const ElementNode = ({ data }) => {
   return (
     <div className={`
-      p-2 rounded-md min-w-32 text-center font-semibold transition-all duration-300
+      p-2 rounded-md min-w-36 text-center font-semibold transition-all duration-300
       ${data.highlighted ? 'ring-4 ring-yellow-300 scale-110 z-50' : ''}
       ${data.isBasicElement 
         ? 'bg-green-700 border-2 border-green-500' 
@@ -29,7 +29,7 @@ const ElementNode = ({ data }) => {
             : 'bg-amber-700 border-2 border-amber-500'}
     `}>
       <div className="flex items-center justify-center">
-        {data.icon && (
+        {data.icon && !data.isCombineNode && (
           <img src={`/images/elements/${data.icon}`} alt={data.label} className="w-6 h-6 mr-2" />
         )}
         <div>{data.label}</div>
@@ -163,25 +163,39 @@ const RecipeVisualizer = ({
     );
   };
   // Generate nodes dan edges untuk ReactFlow berdasarkan struktur tree
-  const generateNodesAndEdges = (treeData, highlightNodes = []) => {
+ const generateNodesAndEdges = (treeData, highlightNodes = []) => {
   if (!treeData) return { nodes: [], edges: [] };
-  
+
   const nodes = [];
   const edges = [];
   let nodeId = 0;
-  
-  // Fungsi rekursif untuk membuat nodes dan edges
-  const processNode = (node, level, parentId = null, position = { x: 0, y: 0 }, isLeftChild = false) => {
-    const currentId = `node_${nodeId++}`;
+
+  const HORIZONTAL_UNIT = 120; // 1 unit width
+  const VERTICAL_GAP = 200;
+
+  // Hitung lebar (jumlah daun) dari subtree
+  const getSubtreeWidth = (node) => {
+    if (!node.children || node.children.length === 0) return 1.5;
+    return node.children.reduce((acc, child) => acc + getSubtreeWidth(child), 0);
+  };
+
+  // recursive layout engine
+  const placeNode = (node, depth, xOffset) => {
+    const id = `node_${nodeId++}`;
     const isBasic = isBasicElement(node.name);
-    const isTarget = level === 0; // Root node adalah target element
+    const isTarget = depth === 0;
     const isHighlighted = highlightNodes.includes(node.name);
-    
-    // Tambahkan node
+
+    const width = getSubtreeWidth(node);
+
+    const currentX = xOffset + (width * HORIZONTAL_UNIT) / 2;
+    const currentY = depth * VERTICAL_GAP;
+
+    // Tambahkan node utama
     nodes.push({
-      id: currentId,
+      id,
       type: 'elementNode',
-      position,
+      position: { x: currentX, y: currentY },
       data: {
         label: node.name,
         icon: node.icon,
@@ -194,58 +208,17 @@ const RecipeVisualizer = ({
       targetPosition: 'top',
       className: isHighlighted ? 'highlighted-node' : ''
     });
-    
-    // Jika ada parent, tambahkan edge
-    if (parentId) {
-      edges.push({
-        id: `edge_${parentId}_${currentId}`,
-        source: parentId,
-        target: currentId,
-        type: 'default',
-        animated: isHighlighted,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 25,
-          height: 25,
-          color: isHighlighted ? '#FFD700' : '#ffffff',
-        },
-        style: { 
-          stroke: isHighlighted ? '#FFD700' : '#ffffff',
-          strokeWidth: isHighlighted ? 5 : 4
-        },
-        zIndex: 1000
-      });
-    }
-    
-    // Jika ada children, tambahkan node kombinasi dan proses children
+
     if (node.children && node.children.length === 2) {
-      // Konstanta untuk layout
-      const verticalSpacing = 200;
-      const horizontalSpacing = 350;
-      
-      // Posisi untuk node kombinasi
-      const combineNodePos = {
-        x: position.x,
-        y: position.y + verticalSpacing/2
-      };
-      
-      // Posisi untuk children nodes
-      const leftChildPos = {
-        x: position.x - horizontalSpacing/2,
-        y: position.y + verticalSpacing
-      };
-      
-      const rightChildPos = {
-        x: position.x + horizontalSpacing/2,
-        y: position.y + verticalSpacing
-      };
-      
-      // Buat node kombinasi
-      const combineNodeId = `combine_${nodeId++}`;
+      const combineId = `combine_${nodeId++}`;
+      const combineX = currentX;
+      const combineY = currentY + VERTICAL_GAP / 2;
+
+      // Tambahkan node combine
       nodes.push({
-        id: combineNodeId,
+        id: combineId,
         type: 'elementNode',
-        position: combineNodePos,
+        position: { x: combineX, y: combineY },
         data: {
           label: '+',
           isCombineNode: true,
@@ -255,63 +228,49 @@ const RecipeVisualizer = ({
         targetPosition: 'top',
         className: 'combine-node'
       });
-      
-      // Hubungkan parent dengan node kombinasi
+
+      // Edge dari parent ke combine
       edges.push({
-        id: `edge_${currentId}_${combineNodeId}`,
-        source: currentId,
-        target: combineNodeId,
+        id: `edge_${id}_${combineId}`,
+        source: id,
+        target: combineId,
         type: 'default',
         animated: isHighlighted,
-        style: { 
+        style: {
           stroke: isHighlighted ? '#FFD700' : '#ffffff',
           strokeWidth: isHighlighted ? 5 : 4
         },
         zIndex: 999
       });
-      
-      // Proses masing-masing child
-      const leftChildId = processNode(node.children[0], level + 1, combineNodeId, leftChildPos, true);
-      const rightChildId = processNode(node.children[1], level + 1, combineNodeId, rightChildPos, false);
-      
-      // Tambahkan garis penghubung horizontal antar input elements jika diperlukan
-      if (level > 0) {
-        edges.push({
-          id: `connector_${leftChildId}_${rightChildId}`,
-          source: leftChildId,
-          target: rightChildId,
-          type: 'straight',
-          style: { 
-            stroke: '#777777',
-            strokeWidth: 2,
-            strokeDasharray: '5,5' // Garis putus-putus
-          },
-          sourceHandle: 'right',
-          targetHandle: 'left',
-          zIndex: 500
-        });
-      }
-    } else if (node.children && node.children.length > 0) {
-      // Fallback for more than 2 children (if ever needed)
-      const childSpacing = 400; // Dari 250 -> 400
-      const startX = position.x - ((node.children.length - 1) * childSpacing) / 2;
 
-      node.children.forEach((child, index) => {
-        const childPos = {
-          x: startX + (index * childSpacing),
-          y: position.y + 250 // Dari 150 -> 250, tambah jarak vertikal
-        };
-        
-        processNode(child, level + 1, currentId, childPos);
-      });
+      // Proses anak-anak
+      let childOffset = xOffset;
+      for (const child of node.children) {
+        const childWidth = getSubtreeWidth(child);
+        const childXOffset = childOffset;
+        const childId = placeNode(child, depth + 1, childXOffset);
+
+        edges.push({
+          id: `edge_${childId}_${combineId}`,
+          source: childId,
+          target: combineId,
+          type: 'default',
+          animated: isHighlighted,
+          style: {
+            stroke: isHighlighted ? '#FFD700' : '#ffffff',
+            strokeWidth: isHighlighted ? 5 : 4
+          },
+          zIndex: 998
+        });
+
+        childOffset += childWidth * HORIZONTAL_UNIT;
+      }
     }
-    
-    return currentId;
+
+    return id;
   };
-  
-  // Mulai dari root (elemen target)
-  processNode(treeData, 0, null, { x: 350, y: 50 });
-  
+
+  placeNode(treeData, 0, 0);
   return { nodes, edges };
 };
 

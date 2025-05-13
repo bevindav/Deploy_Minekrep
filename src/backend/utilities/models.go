@@ -1,12 +1,5 @@
 package utilities
 
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// 	"io/ioutil"
-// 	"time"
-// )
-
 type Recipe struct {
 	Element1     string `json:"element1"`
 	Element2     string `json:"element2"`
@@ -33,11 +26,11 @@ type RecipeTree struct {
 }
 
 type Step struct {
-	Current   string   `json:"current"`
-	Queue     []string `json:"queue"`
-	Element1  string   `json:"element1"`
-	Element2  string   `json:"element2"`
-	Result    string   `json:"result"`
+	Current  string   `json:"current"`
+	Queue    []string `json:"queue"`
+	Element1 string   `json:"element1"`
+	Element2 string   `json:"element2"`
+	Result   string   `json:"result"`
 }
 
 type ResultStep struct {

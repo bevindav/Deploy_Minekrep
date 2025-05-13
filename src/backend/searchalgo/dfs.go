@@ -6,7 +6,6 @@ import (
     "tubes2/utilities"
 )
 
-// Atomic counter untuk visited
 type SafeCounter struct {
     v   int
     mux sync.Mutex
@@ -87,11 +86,6 @@ func DFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int) {
             baseMap := make(map[string][]string)
             baseMap[target] = []string{e1, e2}
 
-
-            // Send first live update for target
-            // utilities.TrackLiveUpdate(target, []string{target}, baseMap)
-
-
             ExploreAllCombinations(e1, e2, baseMap, &recipeCombinations, counter)
             
             validCount := 0
@@ -147,73 +141,21 @@ func DFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int) {
     return allResults, counter.Value()
 }
 
-// func buildPathFromIngredients(ingredients map[string][]string, current string) []string {
-//     path := []string{current}
-//     visited := make(map[string]bool)
-//     visited[current] = true
-    
-//     var buildPath func(element string)
-//     buildPath = func(element string) {
-//         if visited[element] {
-//             return
-//         }
-//         visited[element] = true
-//         path = append(path, element)
-        
-//         if ingList, exists := ingredients[element]; exists {
-//             for _, ing := range ingList {
-//                 buildPath(ing)
-//             }
-//         }
-//     }
-    
-//     if ingList, exists := ingredients[current]; exists {
-//         for _, ing := range ingList {
-//             buildPath(ing)
-//         }
-//     }
-    
-//     return path
-// }
-
 func ExploreAllCombinations(e1, e2 string, baseMap map[string][]string, results *[]map[string][]string, counter *SafeCounter) {
     counter.Inc()
     
     e1Maps := ExploreElementRecipes(e1, utilities.CopyMap(baseMap), counter)
     
     for _, map1 := range e1Maps {
-        // Send live update after exploring e1
-        // path := []string{e1}
-        // for k := range map1 {
-        //     if k != e1 {
-        //         path = append(path, k)
-        //     }
-        // }
-        // utilities.TrackLiveUpdate(e1, path, map1)
-
         e2Maps := ExploreElementRecipes(e2, utilities.CopyMap(map1), counter)
         
         for _, completeMap := range e2Maps {
             *results = append(*results, completeMap)
-            // Send live update after exploring e2 and completing the map
-            // completePath := []string{e2}
-            // for k := range completeMap {
-            //     if k != e2 {
-            //         completePath = append(completePath, k)
-            //     }
-            // }
-            // utilities.TrackLiveUpdate(e2, completePath, completeMap)
         }
     }
 }
 
 func ExploreElementRecipes(element string, currentMap map[string][]string, counter *SafeCounter) []map[string][]string {
-    // Send live update when exploring a new element
-    // if _, ok := currentMap[element]; !ok && !utilities.IsBaseElement(element) {
-    //     path := []string{element}
-    //     utilities.TrackLiveUpdate(element, path, currentMap)
-    // }
-
     if utilities.IsBaseElement(element) {
         return []map[string][]string{currentMap}
     }
@@ -241,37 +183,11 @@ func ExploreElementRecipes(element string, currentMap map[string][]string, count
         
         newMap := utilities.CopyMap(currentMap)
         newMap[element] = []string{e1, e2}
-        
-// Send live update when selecting a recipe
-        // path := []string{element, e1, e2}
-        // utilities.TrackLiveUpdate(element, path, newMap)
 
         e1Maps := ExploreElementRecipes(e1, utilities.CopyMap(newMap), counter)
         
         for _, map1 := range e1Maps {
-            // Track updates between e1 and e2 exploration
-            // midPath := []string{element, e1}
-            // for k := range map1 {
-            //     if k != element && k != e1 {
-            //         midPath = append(midPath, k)
-            //     }
-            // }
-            // utilities.TrackLiveUpdate(e1, midPath, map1)
-
             e2Maps := ExploreElementRecipes(e2, utilities.CopyMap(map1), counter)
-            
-            // for _, validMap := range e2Maps {
-            //     results = append(results, validMap)
-                
-            //     // Send update when a complete branch is found
-            //     finalPath := []string{element}
-            //     for k := range validMap {
-            //         if k != element {
-            //             finalPath = append(finalPath, k)
-            //         }
-            //     }
-            //     utilities.TrackLiveUpdate(element, finalPath, validMap)
-            // }
 
             results = append(results, e2Maps...)
         }

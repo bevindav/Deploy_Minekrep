@@ -19,6 +19,7 @@ type Recipe struct {
 }
 
 func ScrapeIfNeeded(filepath string) {
+	// skip scraping if the file already exists
 	if _, err := os.Stat(filepath); err == nil {
 		log.Println("recipes.json already exists, skipping scraping.")
 		return
@@ -63,6 +64,7 @@ func ScrapeIfNeeded(filepath string) {
 		filteredRecipes = append(filteredRecipes, r)
 	}
 
+	// save the scraped data to a JSON file
 	err := saveToJSON(filteredRecipes, filepath)
 	if err != nil {
 		log.Println("Error saving scraped data:", err)
@@ -81,6 +83,7 @@ func getElementLinks(url, baseURL string) []string {
 
 	doc, _ := goquery.NewDocumentFromReader(res.Body)
 
+	// find all links to elements
 	links := make(map[string]bool)
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		href, exists := s.Attr("href")
@@ -93,7 +96,7 @@ func getElementLinks(url, baseURL string) []string {
 
 	var uniqueLinks []string
 	for link := range links {
-		// Skip Myth and Monsters (blm keexclude)
+		// skip myths and monsters
 		if strings.Contains(strings.ToLower(link), "myths_and_monsters") {
 			continue
 		}
@@ -113,7 +116,7 @@ func scrapeElementPage(url string, mythsSet map[string]bool) []Recipe {
 
 	doc, _ := goquery.NewDocumentFromReader(res.Body)
 
-	// Skip if categorized under "Myths and Monsters"
+	// skip myths and monsters
 	isMyths := false
 	doc.Find("#articleCategories a").Each(func(_ int, s *goquery.Selection) {
 		if strings.Contains(strings.ToLower(s.Text()), "myths and monsters") {
@@ -159,6 +162,7 @@ func scrapeElementPage(url string, mythsSet map[string]bool) []Recipe {
 	return recipes
 }
 
+// write the scraped data to a JSON file
 func saveToJSON(data []Recipe, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
