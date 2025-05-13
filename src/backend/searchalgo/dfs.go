@@ -25,7 +25,7 @@ func (c *SafeCounter) Value() int {
 
 func DFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int) {
     counter := &SafeCounter{v: 0}
-    
+    counter.Inc()
     if utilities.IsBaseElement(target) {
         tree := utilities.RecipeTree{Element: target}
         return []utilities.RecipeTree{tree}, 0
@@ -141,12 +141,15 @@ func DFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int) {
     return allResults, counter.Value()
 }
 
+
 func ExploreAllCombinations(e1, e2 string, baseMap map[string][]string, results *[]map[string][]string, counter *SafeCounter) {
-    counter.Inc()
+    // counter.Inc()
     
     e1Maps := ExploreElementRecipes(e1, utilities.CopyMap(baseMap), counter)
     
     for _, map1 := range e1Maps {
+
+
         e2Maps := ExploreElementRecipes(e2, utilities.CopyMap(map1), counter)
         
         for _, completeMap := range e2Maps {
@@ -156,6 +159,8 @@ func ExploreAllCombinations(e1, e2 string, baseMap map[string][]string, results 
 }
 
 func ExploreElementRecipes(element string, currentMap map[string][]string, counter *SafeCounter) []map[string][]string {
+
+    counter.Inc()
     if utilities.IsBaseElement(element) {
         return []map[string][]string{currentMap}
     }
@@ -164,7 +169,7 @@ func ExploreElementRecipes(element string, currentMap map[string][]string, count
         return []map[string][]string{currentMap}
     }
     
-    counter.Inc()
+    // counter.Inc()
     
     recipeList, exists := utilities.Recipes[element]
     if !exists {
@@ -183,12 +188,12 @@ func ExploreElementRecipes(element string, currentMap map[string][]string, count
         
         newMap := utilities.CopyMap(currentMap)
         newMap[element] = []string{e1, e2}
+        
 
         e1Maps := ExploreElementRecipes(e1, utilities.CopyMap(newMap), counter)
         
         for _, map1 := range e1Maps {
             e2Maps := ExploreElementRecipes(e2, utilities.CopyMap(map1), counter)
-
             results = append(results, e2Maps...)
         }
     }

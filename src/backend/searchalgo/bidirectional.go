@@ -120,6 +120,7 @@ func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree,
 			}
 			for result, recipes := range utilities.Recipes {
 				for _, recipe := range recipes {
+					counter.Inc()
 					if recipe.Element1 != node.Element && recipe.Element2 != node.Element {
 						continue
 					}

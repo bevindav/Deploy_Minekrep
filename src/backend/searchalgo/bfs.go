@@ -6,22 +6,22 @@ import (
 	"tubes2/utilities"
 )
 
-// bfs search for recipes
 func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []utilities.Step) {
 	visited := 0
 	var liveSteps []utilities.Step
 
 	if utilities.IsBaseElement(target) {
+		// Target is base, count as visited
 		tree := utilities.RecipeTree{Element: target}
-		return []utilities.RecipeTree{tree}, visited, liveSteps
+		return []utilities.RecipeTree{tree}, 1, liveSteps
 	}
 
-	// check if target is a valid element
 	recipeList, exists := utilities.Recipes[target]
 	if !exists || len(recipeList) == 0 {
 		fmt.Printf("Target element '%s' doesn't exist or can't be created\n", target)
 		return nil, visited, liveSteps
 	}
+
 	targetTier, targetTierExists := utilities.Tiers[target]
 	if !targetTierExists {
 		fmt.Printf("Target element '%s' does not have a valid tier\n", target)
@@ -37,7 +37,6 @@ func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []ut
 				break
 			}
 
-			// tier checking
 			e1, e2 := recipe.Element1, recipe.Element2
 			e1Tier, ok1 := utilities.Tiers[e1]
 			e2Tier, ok2 := utilities.Tiers[e2]
@@ -49,7 +48,7 @@ func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []ut
 			found[target] = []string{e1, e2}
 
 			visitCount := 0
-			if processRecipe(e1, e2, found, &visitCount, &liveSteps, targetTier) {
+			if processRecipe(e1, e2, found, &visitCount, &liveSteps, targetTier, target) {
 				visited += visitCount
 				recipeTree := utilities.BuildRecipeTree(target, found)
 				allResults = append(allResults, recipeTree)
@@ -58,7 +57,7 @@ func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []ut
 				visited += visitCount
 			}
 		}
-	} else { // multithreading for multiple recipes
+	} else {
 		var wg sync.WaitGroup
 		var mu sync.Mutex
 		resultCount := 0
@@ -68,7 +67,6 @@ func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []ut
 				break
 			}
 
-			// tier checking
 			e1, e2 := recipe.Element1, recipe.Element2
 			e1Tier, ok1 := utilities.Tiers[e1]
 			e2Tier, ok2 := utilities.Tiers[e2]
@@ -94,7 +92,7 @@ func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []ut
 				found[target] = []string{e1, e2}
 
 				localVisitCount := 0
-				if processRecipe(e1, e2, found, &localVisitCount, &liveSteps, targetTier) {
+				if processRecipe(e1, e2, found, &localVisitCount, &liveSteps, targetTier, target) {
 					mu.Lock()
 					defer mu.Unlock()
 
@@ -126,9 +124,15 @@ func BFSSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int, []ut
 	return allResults, visited, liveSteps
 }
 
-// process recipe based on the BFS algorithm
-func processRecipe(e1 string, e2 string, found map[string][]string, visitCount *int, steps *[]utilities.Step, targetTier int) bool {
+func processRecipe(e1 string, e2 string, found map[string][]string, visitCount *int, steps *[]utilities.Step, targetTier int, target string) bool {
 	queue := []string{}
+
+	// Count target as visited
+	*visitCount++
+
+	// Count e1 and e2 as visited
+	*visitCount++
+	*visitCount++
 
 	if !utilities.IsBaseElement(e1) && found[e1] == nil {
 		queue = append(queue, e1)
@@ -145,7 +149,6 @@ func processRecipe(e1 string, e2 string, found map[string][]string, visitCount *
 	for len(queue) > 0 {
 		element := queue[0]
 		queue = queue[1:]
-		*visitCount++
 
 		if found[element] != nil {
 			continue
@@ -174,10 +177,13 @@ func processRecipe(e1 string, e2 string, found map[string][]string, visitCount *
 
 			found[element] = []string{ing1, ing2}
 
+			// Count the current ingredients as visited
+			*visitCount++
+			*visitCount++
+
 			if !utilities.IsBaseElement(ing1) && found[ing1] == nil {
 				queue = append(queue, ing1)
 			}
-
 			if !utilities.IsBaseElement(ing2) && found[ing2] == nil {
 				queue = append(queue, ing2)
 			}

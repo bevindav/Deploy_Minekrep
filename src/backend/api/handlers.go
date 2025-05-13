@@ -15,7 +15,6 @@ import (
 	"tubes2/utilities"
 )
 
-// Recipe represents a recipe from recipes.json
 type Recipe struct {
 	Element1     string `json:"element1"`
 	Element2     string `json:"element2"`
@@ -23,7 +22,6 @@ type Recipe struct {
 	IconFilename string `json:"icon_filename"`
 }
 
-// SearchRequest represents the search parameters from frontend
 type SearchRequest struct {
 	Algorithm       string   `json:"algorithm"`
 	TargetElement   string   `json:"targetElement"`
@@ -32,7 +30,6 @@ type SearchRequest struct {
 	StartElements   []string `json:"startElements,omitempty"`
 }
 
-// ResultStep represents a step in the recipe path
 type ResultStep struct {
 	Element1     string `json:"element1"`
 	Element2     string `json:"element2"`
@@ -40,7 +37,6 @@ type ResultStep struct {
 	IconFilename string `json:"icon_filename"`
 }
 
-// RecipeResult represents a single recipe result for the frontend
 type RecipeResult struct {
 	Path            []string     `json:"path,omitempty"`
 	Steps           []ResultStep `json:"steps"`
@@ -48,7 +44,6 @@ type RecipeResult struct {
 	StartingElement string       `json:"startingElement"`
 }
 
-// SearchResult represents the response to the frontend
 type SearchResult struct {
 	Success bool           `json:"success"`
 	Recipes []RecipeResult `json:"recipes"`
@@ -59,7 +54,6 @@ type SearchResult struct {
 	LiveUpdateSteps []LiveUpdateStep `json:"liveUpdateSteps,omitempty"`
 }
 
-// LiveUpdateStep represents a step in the live update visualization
 type LiveUpdateStep struct {
 	Step           int           `json:"step"`
 	Message        string        `json:"message"`
@@ -67,7 +61,6 @@ type LiveUpdateStep struct {
 	HighlightNodes []string      `json:"highlight_nodes"`
 }
 
-// LoadRecipesFromJSON loads recipes from the JSON file
 func LoadRecipesFromJSON(filePath string) ([]Recipe, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
@@ -86,7 +79,6 @@ func LoadRecipesFromJSON(filePath string) ([]Recipe, error) {
 	return recipes, nil
 }
 
-// FindRecipe searches for a recipe that matches the given elements
 func FindRecipe(recipes []Recipe, element1, element2, result string) *Recipe {
 	for _, recipe := range recipes {
 		if (recipe.Element1 == element1 && recipe.Element2 == element2 && recipe.Result == result) ||
@@ -97,7 +89,6 @@ func FindRecipe(recipes []Recipe, element1, element2, result string) *Recipe {
 	return nil
 }
 
-// BuildRecipeFromString builds recipe steps from recipe strings (e.g., "Fire + Water => Steam")
 func BuildRecipeFromString(recipeStrings []string, allRecipes []Recipe) []ResultStep {
 	var steps []ResultStep
 
@@ -119,7 +110,6 @@ func BuildRecipeFromString(recipeStrings []string, allRecipes []Recipe) []Result
 		elem2 = ingredients[1]
 		result = parts[1]
 
-		// Try to find the icon filename from allRecipes
 		iconFilename := strings.ToLower(result) + ".png" // Default
 		for _, recipe := range allRecipes {
 			if (recipe.Element1 == elem1 && recipe.Element2 == elem2) ||
@@ -142,18 +132,15 @@ func BuildRecipeFromString(recipeStrings []string, allRecipes []Recipe) []Result
 	return steps
 }
 
-// Helper function to extract recipe strings from a recipe tree
 func extractRecipeStrings(tree utilities.RecipeTree) []string {
 	var recipes []string
 
-	// Modified to use Ingredients instead of Children
 	if tree.Ingredients != nil && len(tree.Ingredients) == 2 {
 		child1 := tree.Ingredients[0].Element
 		child2 := tree.Ingredients[1].Element
 		recipe := fmt.Sprintf("%s + %s => %s", child1, child2, tree.Element)
 		recipes = append(recipes, recipe)
 
-		// Recursively extract recipes from children
 		recipes = append(recipes, extractRecipeStrings(tree.Ingredients[0])...)
 		recipes = append(recipes, extractRecipeStrings(tree.Ingredients[1])...)
 	}
@@ -161,40 +148,30 @@ func extractRecipeStrings(tree utilities.RecipeTree) []string {
 	return recipes
 }
 
-// Helper function to extract path elements from recipe tree
 func extractPathElements(tree utilities.RecipeTree) []string {
 	var path []string
 
-	// Add the current element
 	path = append(path, tree.Element)
 
-	// Modified to use Ingredients instead of Children
 	if tree.Ingredients != nil && len(tree.Ingredients) == 2 {
-		// Add elements from first child's path
 		path = append(path, extractPathElements(tree.Ingredients[0])...)
-		// Add elements from second child's path
 		path = append(path, extractPathElements(tree.Ingredients[1])...)
 	}
 
 	return path
 }
 
-// Helper function to convert RecipeTrees to RecipeResults for frontend
 func convertTreesToRecipeResults(trees []utilities.RecipeTree, targetElement string, allRecipes []Recipe) []RecipeResult {
 	var results []RecipeResult
 
 	for _, tree := range trees {
-		// Extract the recipe steps from the tree
 		recipeStrings := extractRecipeStrings(tree)
 
-		// Convert to ResultStep format
 		steps := BuildRecipeFromString(recipeStrings, allRecipes)
 
-		// Find all the elements in the path
 		var path []string
 		path = extractPathElements(tree)
 
-		// Find starting element (should be a base element)
 		startingElement := "Unknown"
 		if len(path) > 0 {
 			startingElement = path[0]
@@ -211,14 +188,12 @@ func convertTreesToRecipeResults(trees []utilities.RecipeTree, targetElement str
 	return results
 }
 
-// SearchHandler handles the /api/search endpoint
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	// Enable CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// Handle preflight requests
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -236,10 +211,8 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Log the incoming request for debugging
 	log.Printf("Search Request: %+v\n", searchReq)
 
-	// Define basic elements if not provided
 	if len(searchReq.StartElements) == 0 {
 		searchReq.StartElements = []string{"Air", "Earth", "Fire", "Water"}
 	}
@@ -248,7 +221,6 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	var result SearchResult
 	result.Success = true
 
-	// Load recipes for building recipe steps
 	workDir, _ := os.Getwd()
 	recipesPath := filepath.Join(workDir, "data", "recipes.json")
 	allRecipes, err := LoadRecipesFromJSON(recipesPath)
@@ -258,21 +230,18 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Execute the appropriate search algorithm
 	if searchReq.Algorithm == "bfs" {
 		trees, visited, _ := searchalgo.BFSSearch(searchReq.TargetElement, searchReq.RecipeCount)
 		baseElements := searchReq.StartElements
 		var allSteps []LiveUpdateStep
 		for _, tree := range trees {
-			steps := buildLiveUpdateStepsFromTree(tree, allRecipes, baseElements)
+			steps := buildLiveUpdateStepsFromTreeWithAlgorithm(tree, allRecipes, baseElements, searchReq.Algorithm)
 			allSteps = append(allSteps, steps...)
 		}
 		result.LiveUpdateSteps = allSteps
-		// Reset callback after search
 		utilities.SetLiveUpdateCallback(nil)
 
 		if len(trees) == 0 {
-			// Return an empty but successful response instead of error
 			result.Success = false
 			result.Recipes = []RecipeResult{}
 			result.Metrics.Time = float64(time.Since(startTime).Milliseconds())
@@ -285,12 +254,10 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("[BFS] Visited: %d nodes\n", visited)
 
-		// Convert trees to RecipeResult format for frontend
 		result.Recipes = convertTreesToRecipeResults(trees, searchReq.TargetElement, allRecipes)
 		result.Metrics.Time = float64(time.Since(startTime).Milliseconds())
 		result.Metrics.NodesVisited = visited
 
-		// Add live update steps to the result
 		log.Printf("tree: %+v\n", trees)
 		log.Printf("Live update steps: %+v\n", result.LiveUpdateSteps)
 
@@ -299,15 +266,13 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		baseElements := searchReq.StartElements
 		var allSteps []LiveUpdateStep
 		for _, tree := range trees {
-			steps := buildLiveUpdateStepsFromTree(tree, allRecipes, baseElements)
+			steps := buildLiveUpdateStepsFromTreeWithAlgorithm(tree, allRecipes, baseElements, searchReq.Algorithm)
 			allSteps = append(allSteps, steps...)
 		}
 		result.LiveUpdateSteps = allSteps
-		// Reset callback after search
 		utilities.SetLiveUpdateCallback(nil)
 
 		if len(trees) == 0 {
-			// Return an empty but successful response instead of error
 			result.Success = false
 			result.Recipes = []RecipeResult{}
 			result.Metrics.Time = float64(time.Since(startTime).Milliseconds())
@@ -320,23 +285,19 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("[DFS] Visited: %d nodes\n", visited)
 
-		// Convert trees to RecipeResult format for frontend
 		result.Recipes = convertTreesToRecipeResults(trees, searchReq.TargetElement, allRecipes)
 		result.Metrics.Time = float64(time.Since(startTime).Milliseconds())
 		result.Metrics.NodesVisited = visited
 
-		// Add live update steps to the result
+		log.Printf("tree: %+v\n", trees)
 		log.Printf("Live update steps: %+v\n", result.LiveUpdateSteps)
 
 	} else if searchReq.Algorithm == "bidirectional" {
-		// Execute the bidirectional search algorithm
 		trees, visited := searchalgo.BiDirectionalSearch(searchReq.TargetElement, searchReq.RecipeCount)
 
-		// Reset callback after search
 		utilities.SetLiveUpdateCallback(nil)
 
 		if len(trees) == 0 {
-			// Return an empty but successful response instead of error
 			result.Success = false
 			result.Recipes = []RecipeResult{}
 			result.Metrics.Time = float64(time.Since(startTime).Milliseconds())
@@ -349,40 +310,35 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("[Bidirectional] Visited: %d nodes\n", visited)
 
-		// Convert trees to RecipeResult format for frontend
 		result.Recipes = convertTreesToRecipeResults(trees, searchReq.TargetElement, allRecipes)
 		result.Metrics.Time = float64(time.Since(startTime).Milliseconds())
 		result.Metrics.NodesVisited = visited
 
-		// Add live update steps to the result
 		baseElements := searchReq.StartElements
 		var allSteps []LiveUpdateStep
 		for _, tree := range trees {
-			steps := buildLiveUpdateStepsFromTree(tree, allRecipes, baseElements)
+			steps := buildLiveUpdateStepsFromTreeWithAlgorithm(tree, allRecipes, baseElements, searchReq.Algorithm)
 			allSteps = append(allSteps, steps...)
 		}
 		result.LiveUpdateSteps = allSteps
+		log.Printf("tree: %+v\n", trees)
 		log.Printf("Live update steps: %+v\n", result.LiveUpdateSteps)
 
 	} else {
-		// Invalid algorithm
 		http.Error(w, "Unsupported algorithm", http.StatusBadRequest)
 		return
 	}
 
-	// Send the response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
 
-// ElementsHandler handles the /api/elements endpoint
 func ElementsHandler(w http.ResponseWriter, r *http.Request) {
 	// Enable CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// Handle preflight requests
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -393,7 +349,6 @@ func ElementsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load recipes from JSON file to extract all available elements
 	workDir, _ := os.Getwd()
 	recipesPath := filepath.Join(workDir, "data", "recipes.json")
 	recipes, err := LoadRecipesFromJSON(recipesPath)
@@ -403,7 +358,6 @@ func ElementsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract all unique elements
 	elementMap := make(map[string]bool)
 	for _, recipe := range recipes {
 		elementMap[recipe.Element1] = true
@@ -411,25 +365,21 @@ func ElementsHandler(w http.ResponseWriter, r *http.Request) {
 		elementMap[recipe.Result] = true
 	}
 
-	// Convert to slice
 	var elements []string
 	for element := range elementMap {
 		elements = append(elements, element)
 	}
 
-	// Send the response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(elements)
 }
 
-// BasicElementsHandler handles the /api/elements/basic endpoint
 func BasicElementsHandler(w http.ResponseWriter, r *http.Request) {
 	// Enable CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// Handle preflight requests
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -440,34 +390,76 @@ func BasicElementsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hard-coded basic elements
 	basicElements := []string{"Air", "Earth", "Fire", "Water"}
 
-	// Send the response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(basicElements)
 }
 
-func buildLiveUpdateStepsFromTree(tree utilities.RecipeTree, allRecipes []Recipe, baseElements []string) []LiveUpdateStep {
+func buildLiveUpdateStepsForAlgorithm(algorithm string, targetElement string, baseElements []string) []LiveUpdateStep {
 	var steps []LiveUpdateStep
-	var recipeSteps []ResultStep
-
 	stepCounter := 1
 
 	steps = append(steps, LiveUpdateStep{
-		Step:    stepCounter,
-		Message: fmt.Sprintf("Starting search for %s...", tree.Element),
+		Step:           stepCounter,
+		Message:        fmt.Sprintf("Starting search for %s using %s algorithm...", targetElement, strings.ToUpper(algorithm)),
+		HighlightNodes: []string{},
 	})
 	stepCounter++
 
-	// Tambahkan langkah exploring basic elements
+	// Step eksplorasi elemen dasar untuk semua algoritma
 	steps = append(steps, LiveUpdateStep{
 		Step:           stepCounter,
 		Message:        "Exploring basic element combinations...",
-		PartialTree:    &RecipeResult{TargetElement: tree.Element},
+		PartialTree:    &RecipeResult{TargetElement: targetElement},
 		HighlightNodes: baseElements,
 	})
 	stepCounter++
+
+	// Setup callback untuk merekam langkah-langkah specific ke algoritme
+	utilities.SetLiveUpdateCallback(func(element string, path []string, found map[string][]string) {
+		// Buat pesan yang sesuai dengan algoritma
+		var message string
+		switch algorithm {
+		case "bfs":
+			message = fmt.Sprintf("BFS: Exploring element %s", element)
+		case "dfs":
+			message = fmt.Sprintf("DFS: Exploring element %s", element)
+		case "bidirectional":
+			// Untuk bidirectional, tentukan arah pencarian
+			direction := "forward"
+			// Jika element ada di dalam found dan kunci "backward" ada, kemungkinan ini dari arah backward
+			if found != nil {
+				if _, exists := found["backward"]; exists {
+					for _, elem := range found["backward"] {
+						if elem == element {
+							direction = "backward"
+							break
+						}
+					}
+				}
+			}
+			message = fmt.Sprintf("Bidirectional (%s): Exploring element %s", direction, element)
+		}
+
+		// Tambahkan langkah ke steps
+		steps = append(steps, LiveUpdateStep{
+			Step:           stepCounter,
+			Message:        message,
+			HighlightNodes: append([]string{element}, path...),
+		})
+		stepCounter++
+	})
+
+	return steps
+}
+
+func buildLiveUpdateStepsFromTreeWithAlgorithm(tree utilities.RecipeTree, allRecipes []Recipe, baseElements []string, algorithm string) []LiveUpdateStep {
+	steps := buildLiveUpdateStepsForAlgorithm(algorithm, tree.Element, baseElements)
+
+	// Tambahkan langkah-langkah penemuan resep dari tree
+	stepCounter := len(steps) + 1
+	var recipeSteps []ResultStep
 
 	var search func(node utilities.RecipeTree)
 	search = func(node utilities.RecipeTree) {
@@ -483,9 +475,22 @@ func buildLiveUpdateStepsFromTree(tree utilities.RecipeTree, allRecipes []Recipe
 			}
 			recipeSteps = append(recipeSteps, step)
 
+			// Buat pesan yang sesuai dengan algoritma
+			var message string
+			switch algorithm {
+			case "bfs":
+				message = fmt.Sprintf("BFS found combination: %s + %s = %s", step.Element1, step.Element2, step.Result)
+			case "dfs":
+				message = fmt.Sprintf("DFS found combination: %s + %s = %s", step.Element1, step.Element2, step.Result)
+			case "bidirectional":
+				message = fmt.Sprintf("Bidirectional search found combination: %s + %s = %s", step.Element1, step.Element2, step.Result)
+			default:
+				message = fmt.Sprintf("Found combination: %s + %s = %s", step.Element1, step.Element2, step.Result)
+			}
+
 			steps = append(steps, LiveUpdateStep{
 				Step:    stepCounter,
-				Message: fmt.Sprintf("Found combination: %s + %s = %s", step.Element1, step.Element2, step.Result),
+				Message: message,
 				PartialTree: &RecipeResult{
 					TargetElement: tree.Element,
 					Steps:         append([]ResultStep{}, recipeSteps...),
@@ -501,6 +506,5 @@ func buildLiveUpdateStepsFromTree(tree utilities.RecipeTree, allRecipes []Recipe
 	}
 
 	search(tree)
-
 	return steps
 }
