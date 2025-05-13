@@ -16,7 +16,7 @@ func main() {
 	workDir, _ := os.Getwd()
 	recipesPath := filepath.Join(workDir, "data", "recipes.json")
 	scraper.ScrapeIfNeeded(recipesPath)
-
+ 
 	// Command line flags
 	utilities.LoadRecipes("data/recipes.json")
 	portPtr := flag.String("port", "8080", "Port for the server to listen on")

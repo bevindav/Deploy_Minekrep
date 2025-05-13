@@ -10,6 +10,7 @@ const MaxDepth = 40
 
 func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree, int) {
 	counter := &SafeCounter{v: 0}
+	counter.Inc()
 
 	if utilities.IsBaseElement(target) {
 		tree := utilities.RecipeTree{Element: target}
