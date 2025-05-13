@@ -54,6 +54,7 @@ func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree,
 			Ingredients: map[string][]string{},
 		}
 		backwardQueue = append(backwardQueue, node)
+		counter.Inc()
 		globalBackwardVisited[base] = true
 		backwardVisitedMap.Store(base, map[string][]string{})
 	}
@@ -65,12 +66,12 @@ func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree,
 		fq := forwardQueue
 		forwardQueue = []*utilities.Node{}
 		for _, node := range fq {
-			counter.Inc()
 			if node.Depth >= MaxDepth {
 				continue
 			}
 			if recipes, ok := utilities.Recipes[node.Element]; ok {
 				for _, recipe := range recipes {
+					counter.Inc()
 					e1, e2 := recipe.Element1, recipe.Element2
 
 					v, _ := forwardVisitedMap.LoadOrStore(node.Element, map[string][]string{})
@@ -97,6 +98,7 @@ func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree,
 					for _, elem := range []string{e1, e2} {
 						if !globalForwardVisited[elem] && !utilities.IsBaseElement(elem) {
 							globalForwardVisited[elem] = true
+							counter.Inc()
 							forwardQueue = append(forwardQueue, &utilities.Node{
 								Element:     elem,
 								Path:        append(copySlice(node.Path), elem),
@@ -113,7 +115,6 @@ func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree,
 		bq := backwardQueue
 		backwardQueue = []*utilities.Node{}
 		for _, node := range bq {
-			counter.Inc()
 			if node.Depth >= MaxDepth {
 				continue
 			}
@@ -156,6 +157,8 @@ func BiDirectionalSearch(target string, maxRecipes int) ([]utilities.RecipeTree,
 					}
 
 					if !globalBackwardVisited[other] && !utilities.IsBaseElement(other) {
+						globalBackwardVisited[other] = true
+						counter.Inc()
 						backwardQueue = append(backwardQueue, &utilities.Node{
 							Element:     other,
 							Path:        append(copySlice(node.Path), result),
