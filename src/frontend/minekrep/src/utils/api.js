@@ -1,7 +1,8 @@
 // utils/api.js
 
-// Base URL for API calls - using the Go backend port shown in your terminal
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://deployminekrep-production.up.railway.app/';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
+
+const buildApiUrl = (path) => `${API_BASE_URL}/${path.replace(/^\//, '')}`;
 
 /**
  * Makes a search request to the API
@@ -14,7 +15,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://deployminekrep-
  */
 export const searchRecipes = async (options) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/search`, {
+    const response = await fetch(buildApiUrl('/api/search'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -55,7 +56,7 @@ export const searchRecipes = async (options) => {
  */
 export const getAllElements = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/elements`);
+    const response = await fetch(buildApiUrl('/api/elements'));
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
@@ -74,7 +75,7 @@ export const getAllElements = async () => {
  */
 export const getBasicElements = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/elements/basic`);
+    const response = await fetch(buildApiUrl('/api/elements/basic'));
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);

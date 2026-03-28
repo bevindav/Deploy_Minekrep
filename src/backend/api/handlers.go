@@ -3,11 +3,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -62,21 +59,24 @@ type LiveUpdateStep struct {
 }
 
 func LoadRecipesFromJSON(filePath string) ([]Recipe, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
+	_ = filePath
+	return loadRecipesFromMemory(), nil
+}
+
+func loadRecipesFromMemory() []Recipe {
+	allUtilitiesRecipes := utilities.AllRecipes()
+	allRecipes := make([]Recipe, 0, len(allUtilitiesRecipes))
+
+	for _, r := range allUtilitiesRecipes {
+		allRecipes = append(allRecipes, Recipe{
+			Element1:     r.Element1,
+			Element2:     r.Element2,
+			Result:       r.Result,
+			IconFilename: r.IconFilename,
+		})
 	}
-	defer jsonFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	var recipes []Recipe
-	err = json.Unmarshal(byteValue, &recipes)
-	if err != nil {
-		return nil, err
-	}
-
-	return recipes, nil
+	return allRecipes
 }
 
 func FindRecipe(recipes []Recipe, element1, element2, result string) *Recipe {
@@ -221,14 +221,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	var result SearchResult
 	result.Success = true
 
-	workDir, _ := os.Getwd()
-	recipesPath := filepath.Join(workDir, "data", "recipes.json")
-	allRecipes, err := LoadRecipesFromJSON(recipesPath)
-	if err != nil {
-		http.Error(w, "Failed to load recipes", http.StatusInternalServerError)
-		log.Printf("Error loading recipes: %v", err)
-		return
-	}
+	allRecipes := loadRecipesFromMemory()
 
 	if searchReq.Algorithm == "bfs" {
 		trees, visited, _ := searchalgo.BFSSearch(searchReq.TargetElement, searchReq.RecipeCount)
@@ -349,14 +342,7 @@ func ElementsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workDir, _ := os.Getwd()
-	recipesPath := filepath.Join(workDir, "data", "recipes.json")
-	recipes, err := LoadRecipesFromJSON(recipesPath)
-	if err != nil {
-		http.Error(w, "Failed to load recipes", http.StatusInternalServerError)
-		log.Printf("Error loading recipes: %v", err)
-		return
-	}
+	recipes := loadRecipesFromMemory()
 
 	elementMap := make(map[string]bool)
 	for _, recipe := range recipes {

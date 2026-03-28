@@ -1,8 +1,10 @@
 package utilities
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 )
@@ -18,13 +20,13 @@ func IsBaseElement(element string) bool {
 
 func BuildRecipeTree(element string, ingredients map[string][]string) RecipeTree {
 	tree := RecipeTree{Element: element}
-	
+
 	if ingList, exists := ingredients[element]; exists {
 		for _, ing := range ingList {
 			tree.Ingredients = append(tree.Ingredients, BuildRecipeTree(ing, ingredients))
 		}
 	}
-	
+
 	return tree
 }
 
@@ -32,7 +34,7 @@ func CalculateTreeDepth(tree RecipeTree) int {
 	if len(tree.Ingredients) == 0 {
 		return 1
 	}
-	
+
 	maxDepth := 0
 	for _, ing := range tree.Ingredients {
 		depth := CalculateTreeDepth(ing)
@@ -40,7 +42,7 @@ func CalculateTreeDepth(tree RecipeTree) int {
 			maxDepth = depth
 		}
 	}
-	
+
 	return maxDepth + 1
 }
 
@@ -66,41 +68,41 @@ func Max(a, b int) int {
 }
 
 func IsSameRecipeTree(tree1, tree2 RecipeTree) bool {
-    if tree1.Element != tree2.Element {
-        return false
-    }
-    
-    if len(tree1.Ingredients) != len(tree2.Ingredients) {
-        return false
-    }
-    
-    if len(tree1.Ingredients) == 2 && len(tree2.Ingredients) == 2 {
-        normalOrder := IsSameRecipeTree(tree1.Ingredients[0], tree2.Ingredients[0]) &&
-                       IsSameRecipeTree(tree1.Ingredients[1], tree2.Ingredients[1])
-        
-        reversedOrder := IsSameRecipeTree(tree1.Ingredients[0], tree2.Ingredients[1]) &&
-                         IsSameRecipeTree(tree1.Ingredients[1], tree2.Ingredients[0])
-        
-        return normalOrder || reversedOrder
-    }
-    
-    for i := range tree1.Ingredients {
-        if !IsSameRecipeTree(tree1.Ingredients[i], tree2.Ingredients[i]) {
-            return false
-        }
-    }
-    
-    return true
+	if tree1.Element != tree2.Element {
+		return false
+	}
+
+	if len(tree1.Ingredients) != len(tree2.Ingredients) {
+		return false
+	}
+
+	if len(tree1.Ingredients) == 2 && len(tree2.Ingredients) == 2 {
+		normalOrder := IsSameRecipeTree(tree1.Ingredients[0], tree2.Ingredients[0]) &&
+			IsSameRecipeTree(tree1.Ingredients[1], tree2.Ingredients[1])
+
+		reversedOrder := IsSameRecipeTree(tree1.Ingredients[0], tree2.Ingredients[1]) &&
+			IsSameRecipeTree(tree1.Ingredients[1], tree2.Ingredients[0])
+
+		return normalOrder || reversedOrder
+	}
+
+	for i := range tree1.Ingredients {
+		if !IsSameRecipeTree(tree1.Ingredients[i], tree2.Ingredients[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func CopyMap(original map[string][]string) map[string][]string {
-    newMap := make(map[string][]string)
-    for k, v := range original {
-        newSlice := make([]string, len(v))
-        copy(newSlice, v)
-        newMap[k] = newSlice
-    }
-    return newMap
+	newMap := make(map[string][]string)
+	for k, v := range original {
+		newSlice := make([]string, len(v))
+		copy(newSlice, v)
+		newMap[k] = newSlice
+	}
+	return newMap
 }
 
 func initializeTiers() {
@@ -108,67 +110,90 @@ func initializeTiers() {
 		Tiers[element] = 1
 	}
 	queue := make([]string, 0)
-    queue = append(queue, BaseElements...)
-    processed := make(map[string]bool)
-    
-    for _, elem := range BaseElements {
-        processed[elem] = true
-    }
+	queue = append(queue, BaseElements...)
+	processed := make(map[string]bool)
+
+	for _, elem := range BaseElements {
+		processed[elem] = true
+	}
 	for len(queue) > 0 {
-        current := queue[0]
-        queue = queue[1:]
-        
-        for result, loadedRecipes := range Recipes {
-            if processed[result] {
-                continue 
-            }
-            
-            for _, recipe := range loadedRecipes {
-                if (recipe.Element1 == current || recipe.Element2 == current) {
- 
-                    if tier1, ok1 := Tiers[recipe.Element1]; ok1 {
-                        if tier2, ok2 := Tiers[recipe.Element2]; ok2 {
-                            resultTier := Max(tier1, tier2) + 1
-                            existingTier, exists := Tiers[result]
-                            
-                            if !exists || resultTier < existingTier {
-                                Tiers[result] = resultTier
-                                if !processed[result] {
-                                    queue = append(queue, result)
-                                }
-                            }
-                            
-                            processed[result] = true
-                        }
-                    }
-                }
-            }
-        }
-    }
+		current := queue[0]
+		queue = queue[1:]
+
+		for result, loadedRecipes := range Recipes {
+			if processed[result] {
+				continue
+			}
+
+			for _, recipe := range loadedRecipes {
+				if recipe.Element1 == current || recipe.Element2 == current {
+
+					if tier1, ok1 := Tiers[recipe.Element1]; ok1 {
+						if tier2, ok2 := Tiers[recipe.Element2]; ok2 {
+							resultTier := Max(tier1, tier2) + 1
+							existingTier, exists := Tiers[result]
+
+							if !exists || resultTier < existingTier {
+								Tiers[result] = resultTier
+								if !processed[result] {
+									queue = append(queue, result)
+								}
+							}
+
+							processed[result] = true
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
-func LoadRecipes(filePath string) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		fmt.Printf("Failed to open file: %v\n", err)
-		return
-	}
-	defer file.Close()
+func loadRecipesFromReader(reader io.Reader) error {
+	// Reset global state to avoid duplicated data on reload.
+	Recipes = make(map[string][]Recipe)
+	Tiers = make(map[string]int)
 
 	var loadedRecipes []Recipe
-	decoder := json.NewDecoder(file)
+	decoder := json.NewDecoder(reader)
 	if err := decoder.Decode(&loadedRecipes); err != nil {
-		fmt.Printf("Failed to decode JSON: %v\n", err)
-		return
+		return fmt.Errorf("failed to decode JSON: %w", err)
 	}
 
 	for _, r := range loadedRecipes {
 		Recipes[r.Result] = append(Recipes[r.Result], r)
 	}
-	
+
 	initializeTiers()
 
 	fmt.Printf("Loaded %d recipes.\n", len(loadedRecipes))
+	return nil
+}
+
+func LoadRecipesFromBytes(data []byte) error {
+	if len(data) == 0 {
+		return fmt.Errorf("recipes data is empty")
+	}
+
+	return loadRecipesFromReader(bytes.NewReader(data))
+}
+
+func LoadRecipes(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	return loadRecipesFromReader(file)
+}
+
+func AllRecipes() []Recipe {
+	all := make([]Recipe, 0)
+	for _, recipes := range Recipes {
+		all = append(all, recipes...)
+	}
+	return all
 }
 
 // tracking search progress
@@ -177,9 +202,9 @@ var liveUpdateMutex sync.Mutex
 
 // sets callback function for live updates
 func SetLiveUpdateCallback(callback func(element string, path []string, found map[string][]string)) {
-    liveUpdateMutex.Lock()
-    defer liveUpdateMutex.Unlock()
-    LiveUpdateCallback = callback
+	liveUpdateMutex.Lock()
+	defer liveUpdateMutex.Unlock()
+	LiveUpdateCallback = callback
 }
 
 // calls the callback function for live updates
@@ -195,7 +220,7 @@ func FindIconForRecipe(element1, element2, result string) string {
 	if recipes, exists := Recipes[result]; exists {
 		for _, r := range recipes {
 			if (r.Element1 == element1 && r.Element2 == element2) ||
-			   (r.Element1 == element2 && r.Element2 == element1) {
+				(r.Element1 == element2 && r.Element2 == element1) {
 				return r.IconFilename
 			}
 		}
