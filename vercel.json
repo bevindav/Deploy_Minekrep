@@ -3,7 +3,8 @@
   "services": {
     "backend": {
       "root": "src/backend",
-      "runtime": "go"
+      "runtime": "go",
+      "entrypoint": "main.go"
     },
     "minekrep": {
       "root": "src/frontend/minekrep",
