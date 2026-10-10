@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "backend": {
+      "root": "src/backend",
+      "runtime": "go"
+    },
+    "minekrep": {
+      "root": "src/frontend/minekrep",
+      "framework": "nextjs"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "minekrep"
+      }
+    }
+  ]
+}
