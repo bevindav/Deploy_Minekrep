@@ -1,21 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import ReactFlow, {
   Controls,
   Background,
   useNodesState,
   useEdgesState,
-  MiniMap,
+  Handle,
+  Position,
   MarkerType,
-  Edge,
-  addEdge,
-  ReactFlowProvider
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-// Custom node renderer untuk element nodes
-const ElementNode = ({ data }) => {
+const ElementNode = memo(({ data }) => {
   return (
     <div className={`
       p-2 rounded-md min-w-36 text-center font-semibold transition-all duration-300
@@ -28,6 +25,8 @@ const ElementNode = ({ data }) => {
             ? 'bg-blue-700 border-2 border-blue-500'
             : 'bg-amber-700 border-2 border-amber-500'}
     `}>
+      <Handle type="source" position={Position.Top} isConnectable={false} style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Bottom} isConnectable={false} style={{ opacity: 0 }} />
       <div className="flex items-center justify-center">
         {data.icon && !data.isCombineNode && (
           <img src={`/images/elements/${data.icon}`} alt={data.label} className="w-6 h-6 mr-2" />
@@ -36,9 +35,9 @@ const ElementNode = ({ data }) => {
       </div>
     </div>
   );
-};
+});
+ElementNode.displayName = 'ElementNode';
 
-// Node types mapping
 const nodeTypes = {
   elementNode: ElementNode,
 };
@@ -57,21 +56,17 @@ const RecipeVisualizer = ({
   const [liveUpdateMessage, setLiveUpdateMessage] = useState("");
   const [isLiveUpdateComplete, setIsLiveUpdateComplete] = useState(false);
   
-  // State untuk kontrol play/pause
   const [isPlaying, setIsPlaying] = useState(true);
   
-  // Refs untuk animasi frame dan timing
   const animationFrameRef = useRef(null);
   const lastUpdateTimeRef = useRef(0);
   const liveUpdateIntervalRef = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
-  // Cek apakah elemen termasuk elemen dasar
   const isBasicElement = (elementName) => {
     return ['earth', 'fire', 'water', 'air'].includes(elementName?.toLowerCase());
   };
 
-  // Fungsi untuk membatalkan semua animasi dan interval
   const clearAllAnimations = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -84,16 +79,12 @@ const RecipeVisualizer = ({
     }
   };
 
-  // Fungsi untuk mengkonversi data recipe dari JSON menjadi struktur tree
   const convertRecipeToTree = (recipeData, targetElement) => {
     if (!recipeData || recipeData.length === 0) return null;
     
-    // Map untuk melacak elemen yang sudah dibuat
     const elementsMap = new Map();
     
-    // Untuk setiap elemen, tambahkan ke map
     recipeData.forEach(recipe => {
-      // Tambahkan hasil ke map jika belum ada
       if (!elementsMap.has(recipe.result)) {
         elementsMap.set(recipe.result, {
           element1: recipe.element1,
@@ -103,21 +94,17 @@ const RecipeVisualizer = ({
       }
     });
     
-    // Membuat struktur hierarki recipe
     const buildRecipeHierarchy = (elementName) => {
-      // Jika elemen dasar, kembalikan sebagai leaf node
       if (isBasicElement(elementName)) {
         return {
           name: elementName,
-          icon: `${elementName.toLowerCase()}.png`, // Asumsikan nama file icon sama dengan nama elemen
+          icon: `${elementName.toLowerCase()}.png`, 
           children: []
         };
       }
       
-      // Cari kombinasi yang menghasilkan elemen ini
       const combination = elementsMap.get(elementName);
       
-      // Jika tidak ditemukan (atau belum lengkap), kembalikan sebagai leaf
       if (!combination) {
         return {
           name: elementName,
@@ -126,7 +113,6 @@ const RecipeVisualizer = ({
         };
       }
       
-      // Rekursif untuk elemen1 dan elemen2
       return {
         name: elementName,
         icon: combination.icon || `${elementName.toLowerCase()}.png`,
@@ -137,33 +123,10 @@ const RecipeVisualizer = ({
       };
     };
     
-    // Bangun struktur tree dari elemen target
     return buildRecipeHierarchy(targetElement);
   };
-  const ElementNode = ({ data }) => {
-    return (
-      <div className={`
-        p-2 rounded-md min-w-32 text-center font-semibold transition-all duration-300
-        ${data.highlighted ? 'ring-4 ring-yellow-300 scale-110 z-50' : ''}
-        ${data.isBasicElement 
-          ? 'bg-green-700 border-2 border-green-500' 
-          : data.isCombineNode 
-            ? 'bg-gray-600 border-2 border-gray-500' 
-            : data.isTargetElement
-              ? 'bg-blue-700 border-2 border-blue-500'
-              : 'bg-amber-700 border-2 border-amber-500'}
-      `}>
-        <div className="flex items-center justify-center">
-          {data.icon && !data.isCombineNode && (
-            <img src={`/images/elements/${data.icon}`} alt={data.label} className="w-6 h-6 mr-2" />
-          )}
-          <div>{data.label}</div>
-        </div>
-      </div>
-    );
-  };
-  // Generate nodes dan edges untuk ReactFlow berdasarkan struktur tree
- const generateNodesAndEdges = (treeData, highlightNodes = []) => {
+
+  const generateNodesAndEdges = (treeData, highlightNodes = []) => {
   if (!treeData) return { nodes: [], edges: [] };
 
   const nodes = [];
@@ -171,12 +134,17 @@ const RecipeVisualizer = ({
   let nodeId = 0;
 
   const HORIZONTAL_UNIT = 120; // 1 unit width
-  const VERTICAL_GAP = 200;
+  const VERTICAL_GAP = 160;
+  const subtreeWidths = new WeakMap();
+  const highlightedNames = new Set(highlightNodes);
 
-  // Hitung lebar (jumlah daun) dari subtree
   const getSubtreeWidth = (node) => {
-    if (!node.children || node.children.length === 0) return 1.5;
-    return node.children.reduce((acc, child) => acc + getSubtreeWidth(child), 0);
+    if (subtreeWidths.has(node)) return subtreeWidths.get(node);
+    const width = !node.children?.length
+      ? 1.5
+      : node.children.reduce((acc, child) => acc + getSubtreeWidth(child), 0);
+    subtreeWidths.set(node, width);
+    return width;
   };
 
   // recursive layout engine
@@ -184,14 +152,13 @@ const RecipeVisualizer = ({
     const id = `node_${nodeId++}`;
     const isBasic = isBasicElement(node.name);
     const isTarget = depth === 0;
-    const isHighlighted = highlightNodes.includes(node.name);
+    const isHighlighted = highlightedNames.has(node.name);
 
     const width = getSubtreeWidth(node);
 
     const currentX = xOffset + (width * HORIZONTAL_UNIT) / 2;
     const currentY = depth * VERTICAL_GAP;
 
-    // Tambahkan node utama
     nodes.push({
       id,
       type: 'elementNode',
@@ -204,46 +171,12 @@ const RecipeVisualizer = ({
         isTargetElement: isTarget,
         highlighted: isHighlighted
       },
-      sourcePosition: 'bottom',
-      targetPosition: 'top',
+      sourcePosition: Position.Top,
+      targetPosition: Position.Bottom,
       className: isHighlighted ? 'highlighted-node' : ''
     });
 
     if (node.children && node.children.length === 2) {
-      const combineId = `combine_${nodeId++}`;
-      const combineX = currentX;
-      const combineY = currentY + VERTICAL_GAP / 2;
-
-      // Tambahkan node combine
-      nodes.push({
-        id: combineId,
-        type: 'elementNode',
-        position: { x: combineX, y: combineY },
-        data: {
-          label: '+',
-          isCombineNode: true,
-          highlighted: isHighlighted
-        },
-        sourcePosition: 'bottom',
-        targetPosition: 'top',
-        className: 'combine-node'
-      });
-
-      // Edge dari parent ke combine
-      edges.push({
-        id: `edge_${id}_${combineId}`,
-        source: id,
-        target: combineId,
-        type: 'default',
-        animated: isHighlighted,
-        style: {
-          stroke: isHighlighted ? '#FFD700' : '#ffffff',
-          strokeWidth: isHighlighted ? 5 : 4
-        },
-        zIndex: 999
-      });
-
-      // Proses anak-anak
       let childOffset = xOffset;
       for (const child of node.children) {
         const childWidth = getSubtreeWidth(child);
@@ -251,10 +184,11 @@ const RecipeVisualizer = ({
         const childId = placeNode(child, depth + 1, childXOffset);
 
         edges.push({
-          id: `edge_${childId}_${combineId}`,
+          id: `edge_${childId}_${id}`,
           source: childId,
-          target: combineId,
-          type: 'default',
+          target: id,
+          type: 'smoothstep',
+          className: isHighlighted ? 'highlighted' : '',
           animated: isHighlighted,
           style: {
             stroke: isHighlighted ? '#FFD700' : '#ffffff',
@@ -274,68 +208,35 @@ const RecipeVisualizer = ({
   return { nodes, edges };
 };
 
-  // PERUBAHAN: Fungsi khusus untuk memaksa render ulang edges
-  const forceRenderEdges = (flowNodes, flowEdges) => {
-    // Jika tidak ada nodes atau edges, tidak perlu render ulang
-    if (flowNodes.length === 0 || flowEdges.length === 0) return;
-    
-    // Set timeout untuk memastikan nodes dirender terlebih dahulu
-    setTimeout(() => {
-      // Clone edges dan tambahkan properti untuk memaksa render ulang
-      const updatedEdges = flowEdges.map(edge => ({
-        ...edge,
-        forceRender: Date.now()
-      }));
-      
-      // Update edges
-      setEdges(updatedEdges);
-      
-      // Fit view setelah edges terupdate
-      if (reactFlowInstance) {
-        reactFlowInstance.fitView({ padding: 0.5 });
-      }
-    }, 200);
-  };
-
-  // Handle Live Update dengan interval yang lebih panjang
   useEffect(() => {
-    // Jika mode live update aktif dan ada data live update
     if (liveUpdate && liveUpdateData && liveUpdateData.length > 0 && !isLiveUpdateComplete) {
-      // Clear interval sebelumnya jika ada
       if (liveUpdateIntervalRef.current) {
         clearInterval(liveUpdateIntervalRef.current);
       }
       
-      // Mulai dengan step 0
       setLiveUpdateStep(0);
       
-      // Tambahkan delay awal agar UI dapat dimuat terlebih dahulu
       setTimeout(() => {
-        // Buat interval untuk update bertahap dengan delay yang lebih panjang
         liveUpdateIntervalRef.current = setInterval(() => {
           setLiveUpdateStep(prevStep => {
             const nextStep = prevStep + 1;
             
-            // Jika sudah sampai step terakhir, clear interval
             if (nextStep >= liveUpdateData.length) {
               clearInterval(liveUpdateIntervalRef.current);
               setIsLiveUpdateComplete(true);
               return prevStep; // Tetap return step terakhir
             }
             
-            // Update message untuk step ini
             setLiveUpdateMessage(liveUpdateData[nextStep].message);
             
-            // Return next step
             return nextStep;
           });
-        }, liveUpdateDelay); // Menggunakan delay yang lebih panjang
+        }, liveUpdateDelay);
         
-        // Set message awal
         if (liveUpdateData[0]) {
           setLiveUpdateMessage(liveUpdateData[0].message);
         }
-      }, 1000); // Delay awal 1 detik untuk memastikan UI siap
+      }, 1000); 
       
       // Cleanup function
       return () => {
@@ -346,32 +247,23 @@ const RecipeVisualizer = ({
     }
   }, [liveUpdate, liveUpdateData, liveUpdateDelay, isLiveUpdateComplete]);
 
-  // Create the recipe tree visualization when recipes or recipeIndex change
   useEffect(() => {
     if (liveUpdate && liveUpdateData) {
-      // Jika mode live update aktif
       setIsLoading(true);
       
       try {
-        // Ambil data pada step saat ini
         const currentStepData = liveUpdateData[liveUpdateStep];
         
         if (currentStepData && currentStepData.partial_tree) {
-          // Konversi data recipe menjadi struktur tree
           const targetElement = currentStepData.partial_tree.targetElement;
           const recipeTree = convertRecipeToTree(currentStepData.partial_tree.steps, targetElement);
           
-          // Generate nodes dan edges untuk ReactFlow dengan highlight
           const highlightNodes = currentStepData.highlight_nodes || [];
           const { nodes: flowNodes, edges: flowEdges } = generateNodesAndEdges(recipeTree, highlightNodes);
           
           setNodes(flowNodes);
           setEdges(flowEdges);
-          
-          // PERUBAHAN: Force render edges
-          forceRenderEdges(flowNodes, flowEdges);
         } else {
-          // Belum ada data tree, clear nodes dan edges
           setNodes([]);
           setEdges([]);
         }
@@ -381,7 +273,6 @@ const RecipeVisualizer = ({
         setIsLoading(false);
       }
     } else {
-      // Mode normal, bukan live update
       if (!recipes || recipes.length === 0 || recipeIndex >= recipes.length) {
         setNodes([]);
         setEdges([]);
@@ -392,23 +283,16 @@ const RecipeVisualizer = ({
       setIsLoading(true);
       
       try {
-        // Data recipe saat ini
         const currentRecipe = recipes[recipeIndex];
         
-        // Target element (hasil akhir)
         const targetElement = currentRecipe.targetElement;
         
-        // Konversi data recipe menjadi struktur tree
         const recipeTree = convertRecipeToTree(currentRecipe.steps, targetElement);
         
-        // Generate nodes dan edges untuk ReactFlow
         const { nodes: flowNodes, edges: flowEdges } = generateNodesAndEdges(recipeTree);
         
         setNodes(flowNodes);
         setEdges(flowEdges);
-        
-        // PERUBAHAN: Force render edges
-        forceRenderEdges(flowNodes, flowEdges);
       } catch (error) {
         console.error("Error processing recipe data:", error);
       } finally {
@@ -511,18 +395,13 @@ const RecipeVisualizer = ({
     }
   }, [reactFlowInstance]);
   
-  // PERUBAHAN: Tampilkan info jika tidak ada edges yang terlihat
-  const [edgesVisible, setEdgesVisible] = useState(true);
   useEffect(() => {
-    // Check if edges are visible after a delay
-    if (edges.length > 0 && nodes.length > 0) {
-      setTimeout(() => {
-        const edgeElements = document.querySelectorAll('.react-flow__edge');
-        setEdgesVisible(edgeElements.length > 0);
-      }, 500);
-    }
-  }, [edges, nodes]);
-  
+    if (!reactFlowInstance || nodes.length === 0) return;
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [reactFlowInstance, nodes]);
   return (
     <div className="flex flex-col h-full">
       {/* Navigation buttons untuk multiple recipes (hanya tampil jika tidak dalam mode live update) */}
@@ -611,7 +490,6 @@ const RecipeVisualizer = ({
         </div>
       ) : nodes.length > 0 ? (
         <div style={{ height: '60vh' }} className="border border-gray-700 rounded-md overflow-hidden">
-          {/* PERUBAHAN: Tambahkan styling wrapper untuk ReactFlow */}
           <div className="react-flow-wrapper h-full">
             <ReactFlow
               nodes={nodes}
@@ -625,9 +503,8 @@ const RecipeVisualizer = ({
               minZoom={0.1}
               maxZoom={1.5}
               defaultZoom={0.8}
-              // PERUBAHAN: Tambahkan prop penting untuk edges
               defaultEdgeOptions={{
-                type: 'default',
+                type: 'smoothstep',
                 style: { stroke: '#ffffff', strokeWidth: 4 },
                 markerEnd: {
                   type: MarkerType.ArrowClosed,
@@ -644,20 +521,12 @@ const RecipeVisualizer = ({
               zoomOnScroll={true}
               panOnScroll={true}
               panOnDrag={true}
-              // PERUBAHAN: Tambahkan className
               className="recipe-visualization-flow"
             >
               <Controls />
               <Background color="#444" gap={16} />
             </ReactFlow>
           </div>
-          
-          {/* PERUBAHAN: Tambahkan pesan jika edges tidak terlihat */}
-          {!edgesVisible && (
-            <div className="absolute top-2 left-2 bg-red-500 text-white px-3 py-1 rounded text-xs">
-              Edge rendering issue detected. Please try zooming out or refreshing.
-            </div>
-          )}
         </div>
       ) : (
         <div className="flex justify-center items-center h-40 text-gray-400">
@@ -682,10 +551,6 @@ const RecipeVisualizer = ({
             <div className="w-4 h-4 bg-blue-700 border-2 border-blue-500 rounded-sm mr-2"></div>
             <span className="text-gray-300">Target Element</span>
           </div>
-          <div className="flex items-center mr-4 mb-2">
-            <div className="w-4 h-4 bg-gray-600 border-2 border-gray-500 rounded-sm mr-2"></div>
-            <span className="text-gray-300">Combine Node (+)</span>
-          </div>
           <div className="flex items-center mb-2">
             <div className="w-4 h-4 bg-amber-700 border-2 border-amber-500 rounded-sm ring-2 ring-yellow-300 mr-2"></div>
             <span className="text-gray-300">Newly Discovered</span>
@@ -695,9 +560,5 @@ const RecipeVisualizer = ({
     </div>
   );
 };
-
-<div style={{ height: '70vh' }} className="border border-gray-700 rounded-md overflow-hidden">
-  {/* ReactFlow */}
-</div>
 
 export default RecipeVisualizer;
